@@ -1,0 +1,12 @@
+# Code Owners for BlackRoad OS .github repository
+# These owners will be automatically requested for review on PRs.
+
+# Default owner for all files
+*                           @blackboxprogramming
+
+# Security-sensitive files require explicit review
+SECURITY.md                 @blackboxprogramming
+.github/workflows/          @blackboxprogramming
+.github/dependabot.yml      @blackboxprogramming
+.github/CODEOWNERS          @blackboxprogramming
+LICENSE                     @blackboxprogramming
