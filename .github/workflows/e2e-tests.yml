@@ -1,0 +1,73 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'e2e/**'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'e2e/**'
+      - 'package.json'
+  workflow_dispatch:
+  # Reusable from other repos in the org
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: '20'
+
+jobs:
+  e2e:
+    name: Stripe E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version || '20' }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          STRIPE_WEBHOOK_SECRET: whsec_test_ci_secret
+          STRIPE_WEBHOOK_PORT: '14242'
+
+      - name: Run payment unit tests
+        run: node --test e2e/payments.test.mjs
+
+  lint:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          for f in $(find . -name '*.json' -not -path './.git/*' -not -path './node_modules/*'); do
+            node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" && echo "OK: $f" || { echo "INVALID: $f"; exit 1; }
+          done
+
+      - name: Validate workflow YAML
+        run: |
+          for f in .github/workflows/*.yml; do
+            node -e "
+              const yaml = require('fs').readFileSync('$f','utf8');
+              if (!yaml.includes('on:')) { console.error('Missing trigger: $f'); process.exit(1); }
+              console.log('OK: $f');
+            "
+          done

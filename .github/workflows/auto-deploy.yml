@@ -1,115 +1,78 @@
-name: 🚀 Auto Deploy
+name: Stripe Integration CI
 
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'src/stripe/**'
+      - 'package.json'
+  pull_request:
+    paths:
+      - 'src/stripe/**'
+      - 'package.json'
   workflow_dispatch:
 
-env:
-  NODE_VERSION: '20'
-
 jobs:
-  detect-service:
-    name: Detect Service Type
+  test-stripe:
+    name: Stripe Integration Tests
     runs-on: ubuntu-latest
-    outputs:
-      service_type: ${{ steps.detect.outputs.service_type }}
-      deploy_target: ${{ steps.detect.outputs.deploy_target }}
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Detect Service Type
-        id: detect
-        run: |
-          if [ -f "next.config.mjs" ] || [ -f "next.config.js" ]; then
-            echo "service_type=nextjs" >> $GITHUB_OUTPUT
-            echo "deploy_target=cloudflare" >> $GITHUB_OUTPUT
-          elif [ -f "Dockerfile" ]; then
-            echo "service_type=docker" >> $GITHUB_OUTPUT
-            echo "deploy_target=railway" >> $GITHUB_OUTPUT
-          elif [ -f "package.json" ]; then
-            echo "service_type=node" >> $GITHUB_OUTPUT
-            echo "deploy_target=railway" >> $GITHUB_OUTPUT
-          elif [ -f "requirements.txt" ]; then
-            echo "service_type=python" >> $GITHUB_OUTPUT
-            echo "deploy_target=railway" >> $GITHUB_OUTPUT
-          else
-            echo "service_type=static" >> $GITHUB_OUTPUT
-            echo "deploy_target=cloudflare" >> $GITHUB_OUTPUT
-          fi
 
-  deploy-cloudflare:
-    name: Deploy to Cloudflare Pages
-    needs: detect-service
-    if: needs.detect-service.outputs.deploy_target == 'cloudflare'
-    runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Setup Node
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20'
           cache: 'npm'
-      
-      - name: Install Dependencies
-        run: npm ci
-      
-      - name: Build
-        run: npm run build
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .next --project-name=${{ github.event.repository.name }}
 
-  deploy-railway:
-    name: Deploy to Railway
-    needs: detect-service
-    if: needs.detect-service.outputs.deploy_target == 'railway'
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Stripe E2E tests
+        run: npm run test:stripe
+        env:
+          STRIPE_WEBHOOK_SECRET: whsec_test_ci
+          STRIPE_WEBHOOK_PORT: '14242'
+
+      - name: Run payment tests
+        run: node --test e2e/payments.test.mjs
+
+  validate-webhook:
+    name: Validate Webhook Handler
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Install Railway CLI
-        run: npm i -g @railway/cli
-      
-      - name: Deploy to Railway
-        run: railway up --service ${{ github.event.repository.name }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-  health-check:
-    name: Health Check
-    needs: [deploy-cloudflare, deploy-railway]
-    if: always() && (needs.deploy-cloudflare.result == 'success' || needs.deploy-railway.result == 'success')
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Wait for Deployment
-        run: sleep 30
-      
-      - name: Check Health Endpoint
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Syntax check all modules
         run: |
-          URL="${{ secrets.DEPLOY_URL }}/api/health"
-          curl -f $URL || exit 1
-      
-      - name: Notify Success
-        if: success()
-        run: echo "✅ Deployment successful and healthy!"
-      
-      - name: Notify Failure
-        if: failure()
+          node --check src/stripe/webhook.mjs
+          node --check src/stripe/payments.mjs
+          node --check src/health.mjs
+
+      - name: Verify exports
         run: |
-          echo "❌ Deployment health check failed!"
-          exit 1
+          node -e "
+            import('./src/stripe/webhook.mjs').then(m => {
+              if (typeof m.verifySignature !== 'function') throw new Error('verifySignature not exported');
+              if (typeof m.handlers !== 'object') throw new Error('handlers not exported');
+              console.log('webhook.mjs exports: OK');
+            });
+          "
+          node -e "
+            import('./src/stripe/payments.mjs').then(m => {
+              const fns = ['createCheckoutSession','createSubscription','cancelSubscription','getPaymentIntent','listPayments','createCustomer','getCustomer'];
+              for (const fn of fns) {
+                if (typeof m[fn] !== 'function') throw new Error(fn + ' not exported');
+              }
+              console.log('payments.mjs exports: OK (' + fns.length + ' functions)');
+            });
+          "

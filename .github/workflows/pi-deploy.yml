@@ -1,0 +1,104 @@
+name: Deploy to Pi Fleet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - 'package.json'
+  workflow_dispatch:
+    inputs:
+      hosts:
+        description: 'Comma-separated Pi hosts (overrides secret)'
+        required: false
+        type: string
+      service:
+        description: 'Systemd service to restart'
+        required: false
+        default: 'blackroad-stripe'
+        type: string
+  # Reusable from other repos
+  workflow_call:
+    inputs:
+      hosts:
+        type: string
+        required: false
+      service:
+        type: string
+        default: 'blackroad-stripe'
+    secrets:
+      PI_SSH_PRIVATE_KEY:
+        required: true
+      PI_HOSTS:
+        required: false
+
+jobs:
+  test:
+    name: Pre-deploy Tests
+    uses: ./.github/workflows/e2e-tests.yml
+
+  deploy:
+    name: Deploy to Raspberry Pis
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PI_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Pre-accept host keys for all Pi hosts
+          HOSTS="${{ inputs.hosts || secrets.PI_HOSTS }}"
+          IFS=',' read -ra HOST_ARR <<< "${HOSTS}"
+          for host in "${HOST_ARR[@]}"; do
+            host=$(echo "${host}" | xargs)
+            ssh-keyscan -H "${host}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          done
+
+      - name: Deploy to Pi fleet
+        run: bash scripts/pi-deploy.sh
+        env:
+          PI_HOSTS: ${{ inputs.hosts || secrets.PI_HOSTS }}
+          PI_USER: ${{ secrets.PI_USER || 'pi' }}
+          PI_DEPLOY_DIR: ${{ secrets.PI_DEPLOY_DIR || '/opt/blackroad' }}
+          PI_SSH_KEY: ~/.ssh/id_ed25519
+          PI_SERVICE: ${{ inputs.service || 'blackroad-stripe' }}
+
+      - name: Verify deployment health
+        run: |
+          HOSTS="${{ inputs.hosts || secrets.PI_HOSTS }}"
+          IFS=',' read -ra HOST_ARR <<< "${HOSTS}"
+          ALL_HEALTHY=true
+          for host in "${HOST_ARR[@]}"; do
+            host=$(echo "${host}" | xargs)
+            echo "Checking health: ${host}..."
+            # Wait for service to come up
+            for i in 1 2 3 4 5; do
+              STATUS=$(curl -sf "http://${host}:4242/health" 2>/dev/null | node -e "
+                let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
+                  try{console.log(JSON.parse(d).status)}catch{console.log('error')}
+                })
+              " 2>/dev/null || echo "unreachable")
+              if [ "${STATUS}" = "ok" ]; then
+                echo "  ${host}: healthy"
+                break
+              fi
+              echo "  ${host}: attempt ${i}/5 — ${STATUS}"
+              sleep 5
+            done
+            if [ "${STATUS}" != "ok" ]; then
+              echo "  WARN: ${host} not healthy after 5 attempts"
+              ALL_HEALTHY=false
+            fi
+          done
+          if [ "${ALL_HEALTHY}" = "false" ]; then
+            echo "Some Pis are unhealthy — check logs"
+            exit 1
+          fi
+          echo "All Pis healthy!"

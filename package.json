@@ -1,0 +1,21 @@
+{
+  "name": "@blackroad/org-infrastructure",
+  "version": "1.0.0",
+  "description": "BlackRoad OS org-level Stripe integration, E2E tests, and Pi deployment",
+  "private": true,
+  "scripts": {
+    "test": "node --test e2e/*.test.mjs",
+    "test:e2e": "node --test e2e/*.test.mjs",
+    "test:stripe": "node --test e2e/stripe.test.mjs",
+    "stripe:webhook": "node src/stripe/webhook.mjs",
+    "deploy:pi": "bash scripts/pi-deploy.sh",
+    "health": "node src/health.mjs"
+  },
+  "dependencies": {
+    "stripe": "^14.0.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
