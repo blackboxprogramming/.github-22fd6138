@@ -1,164 +1,125 @@
 # .github
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/blackboxprogramming/.github/deploy.yml?branch=main)](https://github.com/blackboxprogramming/.github/actions) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Brand Compliant](https://img.shields.io/badge/Brand-Compliant-success)](https://brand.blackroad.io)
+[![Deploy](https://img.shields.io/github/actions/workflow/status/blackboxprogramming/.github/deploy.yml?branch=main&label=deploy)](https://github.com/blackboxprogramming/.github/actions/workflows/deploy.yml) [![Security](https://img.shields.io/github/actions/workflow/status/blackboxprogramming/.github/security-scan.yml?branch=main&label=security)](https://github.com/blackboxprogramming/.github/actions/workflows/security-scan.yml) [![Health](https://img.shields.io/github/actions/workflow/status/blackboxprogramming/.github/self-healing.yml?label=health)](https://github.com/blackboxprogramming/.github/actions/workflows/self-healing.yml) [![Brand Compliant](https://img.shields.io/badge/Brand-Compliant-success)](https://brand.blackroad.io)
 
-Organization profile for blackboxprogramming
+Organization-wide configuration, workflows, and profile for **blackboxprogramming** (BlackRoad OS).
 
-## 🌟 Features
+## Workflows
 
-- ✨ Organization profile for blackboxprogramming
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| [deploy.yml](.github/workflows/deploy.yml) | Push to `main`, PRs | Deploy static site to Cloudflare Pages with brand compliance check |
+| [auto-deploy.yml](.github/workflows/auto-deploy.yml) | Push to `main`, manual | Auto-detect service type and deploy to Cloudflare Pages or Railway |
+| [cloudflare-worker.yml](.github/workflows/cloudflare-worker.yml) | Push to `main` (worker paths), manual | Deploy Cloudflare Workers for long-running tasks |
+| [security-scan.yml](.github/workflows/security-scan.yml) | Push, PRs, weekly, manual | CodeQL analysis and dependency vulnerability scanning |
+| [self-healing.yml](.github/workflows/self-healing.yml) | Every 6 hours, post-deploy, manual | Health monitoring with auto-rollback and issue creation |
+| [automerge.yml](.github/workflows/automerge.yml) | Dependabot PRs | Auto-approve and merge patch/minor dependency updates |
+| [label-sync.yml](.github/workflows/label-sync.yml) | Push to `main`, manual | Ensure consistent issue/PR labels across the repository |
 
+All actions are **pinned to commit hashes** for supply-chain security.
 
-## 🚀 Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/BlackRoad-OS/.github.git
-
-# Navigate to the directory
-cd .github
-
-# Open in browser
-open index.html
-```
-
-## 📦 Deployment
-
-### Cloudflare Pages
-
-This project is configured for automatic deployment via Cloudflare Pages:
-
-1. Connected to GitHub repository
-2. Auto-deploys on push to `main` branch
-3. Preview deployments for all branches
-4. Custom domain: .github.pages.dev
-
-**Live URL:** https://.github.pages.dev
-
-## 🎨 Brand Compliance
-
-This project follows the official [BlackRoad Brand System](https://brand.blackroad.io):
-
-- ✅ **Colors:** Amber (#F5A623), Hot Pink (#FF1D6C), Electric Blue (#2979FF), Violet (#9C27B0)
-- ✅ **Spacing:** Golden Ratio (φ = 1.618)
-- ✅ **Typography:** SF Pro Display, line-height: 1.618
-- ✅ **Gradients:** 135° with stops at 38.2% & 61.8%
-- ❌ **No forbidden colors** from old system
-
-## 🛠️ Technology Stack
-
-- **Frontend:** HTML5, CSS3 (Custom Properties)
-- **Design System:** BlackRoad Brand System
-- **Hosting:** Cloudflare Pages
-- **CI/CD:** GitHub Actions
-- **Version Control:** Git & GitHub
-
-## 📂 Project Structure
+## Project Structure
 
 ```
 .github/
-├── index.html          # Main page
-├── README.md           # This file
-├── CONTRIBUTING.md     # Contribution guidelines
-├── LICENSE             # MIT License
-└── .github/
-    └── workflows/
-        └── deploy.yml  # CI/CD workflow
+├── .github/
+│   ├── workflows/
+│   │   ├── deploy.yml              # Cloudflare Pages deployment
+│   │   ├── auto-deploy.yml         # Multi-target auto deploy
+│   │   ├── cloudflare-worker.yml   # Cloudflare Worker deployment
+│   │   ├── security-scan.yml       # CodeQL + dependency scanning
+│   │   ├── self-healing.yml        # Health monitoring + auto-rollback
+│   │   ├── automerge.yml           # Dependabot automerge
+│   │   └── label-sync.yml          # Repository label management
+│   ├── dependabot.yml              # Dependency update config
+│   └── FUNDING.yml                 # Sponsorship config
+├── profile/
+│   └── README.md                   # Organization profile page
+├── README.md                       # This file
+├── CONTRIBUTING.md                 # Contribution guidelines
+├── SECURITY.md                     # Security policy
+└── LICENSE                         # BlackRoad OS Proprietary License
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-### Quick Contribution Guide
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m '✨ Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📋 Development
-
-### Prerequisites
-
-- Modern web browser
-- Git
-- Text editor (VS Code recommended)
-
-### Local Development
-
-Simply open `index.html` in your browser. No build process required!
-
-### Brand Compliance Check
-
-Ensure your changes follow the brand system:
+## Quick Start
 
 ```bash
-# Check colors
-grep -r "#FF1D6C\|#F5A623\|#2979FF\|#9C27B0" .
-
-# Verify no forbidden colors
-grep -r "#FF9D00\|#FF6B00\|#FF0066" . && echo "⚠️ Forbidden colors found!"
+git clone https://github.com/blackboxprogramming/.github.git
+cd .github
 ```
 
-## 📄 License
+No build process required — this is a static organization profile repository.
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Deployment
 
-## 🌐 Part of BlackRoad OS
+### Cloudflare Pages (Static)
+
+Auto-deploys on push to `main` with brand compliance enforcement and PR preview URLs.
+
+### Cloudflare Workers (Long-Running Tasks)
+
+For background processing, scheduled tasks, and API endpoints:
+
+1. Place worker code in `worker/` or `workers/` directory
+2. Configure via `wrangler.toml`
+3. Auto-deploys on push to `main` when worker files change
+4. Manual dispatch for staging/production environments
+
+### Railway (Applications)
+
+For Docker, Node.js, or Python applications — auto-detected and deployed via Railway CLI.
+
+## Brand Compliance
+
+All contributions must follow the [BlackRoad Brand System](https://brand.blackroad.io):
+
+- **Colors:** Amber (#F5A623), Hot Pink (#FF1D6C), Electric Blue (#2979FF), Violet (#9C27B0)
+- **Spacing:** Golden Ratio (phi = 1.618): 8px, 13px, 21px, 34px, 55px, 89px, 144px
+- **Typography:** SF Pro Display, line-height: 1.618
+- **Gradients:** 135 degrees with stops at 38.2% and 61.8%
+- **Forbidden Colors:** #FF9D00, #FF6B00, #FF0066, #FF006B, #D600AA, #7700FF, #0066FF
+
+## Security
+
+- Dependabot vulnerability scanning (weekly, auto-merge for patch/minor)
+- CodeQL static analysis (JavaScript/TypeScript, Python)
+- Secret scanning enabled
+- Health monitoring with auto-rollback every 6 hours
+- See [SECURITY.md](SECURITY.md) for vulnerability reporting
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Technology Stack
+
+- **Hosting:** Cloudflare Pages + Cloudflare Workers
+- **Applications:** Railway
+- **CI/CD:** GitHub Actions (all actions pinned to commit hashes)
+- **Security:** CodeQL, Dependabot, npm audit
+- **Monitoring:** Self-healing workflow with auto-rollback
+
+## Part of BlackRoad OS
 
 This repository is part of the [BlackRoad OS](https://blackroad.io) ecosystem.
 
-### Related Projects
+- [blackboxprogramming.github.io](https://blackboxprogramming.github.io) — Website
+- [docs.blackroad.io](https://docs.blackroad.io) — Documentation
+- [status.blackroad.io](https://status.blackroad.io) — System Status
+- [agents.blackroad.io](https://agents.blackroad.io) — AI Agents
 
-- [blackroad-os-web](https://github.com/BlackRoad-OS/blackroad-os-web) - Main platform
-- [blackroad-os-docs](https://github.com/BlackRoad-OS/blackroad-os-docs) - Documentation
-- [blackroad-os-brand](https://github.com/BlackRoad-OS/blackroad-os-brand) - Brand system
-
-## 📞 Support
+## Support
 
 - **Documentation:** https://docs.blackroad.io
-- **Issues:** https://github.com/BlackRoad-OS/.github/issues
+- **Issues:** https://github.com/blackboxprogramming/.github/issues
 - **Email:** blackroad.systems@gmail.com
 
-## 🙏 Acknowledgments
-
-- Built with [Claude Code](https://claude.com/claude-code)
-- Deployed on [Cloudflare Pages](https://pages.cloudflare.com)
-- Part of the BlackRoad OS ecosystem
-
 ---
 
-**Status:** 🟢 Active
-**Last Updated:** 2026-01-07
-**Maintained by:** BlackRoad OS Team
-
----
-
-## 📜 License & Copyright
-
-**Copyright © 2026 BlackRoad OS, Inc. All Rights Reserved.**
+**Copyright 2026 BlackRoad OS, Inc. All Rights Reserved.**
 
 **CEO:** Alexa Amundson
 
-**PROPRIETARY AND CONFIDENTIAL**
+This software is the proprietary property of BlackRoad OS, Inc. See [LICENSE](LICENSE) for complete terms.
 
-This software is the proprietary property of BlackRoad OS, Inc. and is **NOT for commercial resale**.
-
-### ⚠️ Usage Restrictions:
-- ✅ **Permitted:** Testing, evaluation, and educational purposes
-- ❌ **Prohibited:** Commercial use, resale, or redistribution without written permission
-
-### 🏢 Enterprise Scale:
-Designed to support:
-- 30,000 AI Agents
-- 30,000 Human Employees
-- One Operator: Alexa Amundson (CEO)
-
-### 📧 Contact:
-For commercial licensing inquiries:
-- **Email:** blackroad.systems@gmail.com
-- **Organization:** BlackRoad OS, Inc.
-
-See [LICENSE](LICENSE) for complete terms.
+For commercial licensing inquiries: blackroad.systems@gmail.com
